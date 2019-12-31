@@ -1,4 +1,4 @@
-service: fts-aws-nodejs
+service: fts-aws-nodejs # TODO: update this with your service name
 
 provider:
   name: aws
