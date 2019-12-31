@@ -3,6 +3,8 @@ service: fts-aws-nodejs
 provider:
   name: aws
   runtime: nodejs12.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-west-2'}
 
 functions:
   hello:
