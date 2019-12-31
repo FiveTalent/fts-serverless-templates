@@ -6,6 +6,10 @@ provider:
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-west-2'}
 
+package:
+  exclude:
+    - node_modules/aws-sdk/**/*
+
 functions:
   hello:
     handler: handler.hello
