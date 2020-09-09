@@ -1,0 +1,96 @@
+service: fts-aws-empath-service-template
+plugins:
+  - serverless-pseudo-parameters
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${opt:stage, 'testing'}
+  region: ${opt:region, 'us-west-2'}
+  stackTags:
+      PRODUCT: empath
+      SERVICE: ${self:service}
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+       - s3:GetObject
+      Resource: 
+        - ${self:resources.Outputs.S3IngestedBucketARN.Value}
+        - !Join
+          - /
+          - - ${self:resources.Outputs.S3IngestedBucketARN.Value}
+            - '*'
+    - Effect: "Allow"
+      Action:
+       - s3:PutObject
+      Resource: 
+        - ${self:resources.Outputs.S3ProcessedBucketARN.Value}
+        - !Join
+          - /
+          - - ${self:resources.Outputs.S3ProcessedBucketARN.Value}
+            - '*'
+    - Effect: 'Allow'
+      Action:
+        - 'ssm:GetParameters'
+      Resource: 
+        - arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter/empath/${self:provider.stage}/${self:service}/*
+  environment:
+    SSM_PROCESSED_BUCKET_NAME: /empath/${self:provider.stage}/${self:service}/processed/bucket-name
+package:
+  exclude:
+    - node_modules/aws-sdk/**/*
+functions:
+  ingest:
+    name: empath-${self:provider.stage}-${self:service}-ingest
+    handler: src/ingest.ingest
+    tags:
+      PROCESS: ingest
+  process:
+    name: empath-${self:provider.stage}-${self:service}-process
+    handler: src/process.process
+    tags:
+      PROCESS: process
+    events:
+      - s3:
+          bucket: ${self:custom.s3IngestedBucketName}
+          event: s3:ObjectCreated:*
+          existing: true
+custom:
+  s3IngestedBucketName: empath-${self:provider.stage}-${self:service}-ingested
+resources:
+  Resources:
+    S3IngestedBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.s3IngestedBucketName}
+        AccessControl: Private
+        Tags:
+          - Key: PROCESS
+            Value: ingest
+    S3ProcessedBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: empath-${self:provider.stage}-${self:service}-processed
+        AccessControl: Private
+        Tags:
+          - Key: PROCESS
+            Value: process
+    S3ProcessedBucketName:
+      Type: AWS::SSM::Parameter
+      Properties:
+        Name: ${self:provider.environment.SSM_PROCESSED_BUCKET_NAME}
+        Type: String
+        Tags:
+          PROCESS: process
+        Value: 
+          Ref: S3ProcessedBucket
+  Outputs:
+    S3IngestedBucketARN:
+      Value:
+        Fn::GetAtt:
+            - S3IngestedBucket
+            - Arn
+    S3ProcessedBucketARN:
+      Value:
+        Fn::GetAtt:
+            - S3ProcessedBucket
+            - Arn
