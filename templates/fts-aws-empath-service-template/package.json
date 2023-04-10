@@ -34,7 +34,7 @@
     "prettier": "^1.19.1"
   },
   "dependencies": {
-    "aws-sdk": "^2.751.0",
+    "aws-sdk": "^2.1354.0",
     "serverless-pseudo-parameters": "^2.5.0"
   }
 }
